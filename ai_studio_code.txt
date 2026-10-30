@@ -1,0 +1,294 @@
+import React, { useState, useEffect } from 'react';
+import { subscribeToSiteData, saveSiteData, initialSiteData } from '../firebase';
+import { SiteContent } from '../types';
+import { Lock, Save, CheckCircle2, AlertCircle } from 'lucide-react';
+
+export default function Admin() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState('');
+  const [formData, setFormData] = useState<SiteContent>(initialSiteData);
+  const [isSaving, setIsSaving] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // পেজে ঢুকলে ডাটা লোড হবে
+  useEffect(() => {
+    const unsubscribe = subscribeToSiteData((data) => {
+      setFormData(data);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    // আপনার এডমিন পাসওয়ার্ড (প্রয়োজনে এটি বদলে নিন)
+    if (password === 'baranti1234') {
+      setIsAuthenticated(true);
+    } else {
+      alert('ভুল পাসওয়ার্ড! সঠিক পাসওয়ার্ড দিন।');
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setStatusMessage(null);
+    try {
+      await saveSiteData(formData);
+      setStatusMessage({ type: 'success', text: 'সব তথ্য সফলভাবে আপডেট হয়েছে! ওয়েবসাইটে পরিবর্তন সাথে সাথে কার্যকর হয়েছে।' });
+    } catch (err) {
+      console.error(err);
+      setStatusMessage({ type: 'error', text: 'তথ্য সেভ হতে সমস্যা হয়েছে। ইন্টারনেট ও Firebase সেটিংস চেক করুন।' });
+    }
+    setIsSaving(false);
+  };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-neutral-100 flex items-center justify-center p-4 font-['Hind_Siliguri']">
+        <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-xl border border-neutral-200">
+          <div className="text-center mb-6">
+            <div className="w-12 h-12 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Lock className="w-6 h-6" />
+            </div>
+            <h2 className="text-2xl font-bold text-neutral-800">এডমিন লগইন</h2>
+            <p className="text-sm text-neutral-500 mt-1">দক্ষিণ বাড়ন্তি সনাতনী যুব সংঘ</p>
+          </div>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-neutral-700 mb-1">পাসওয়ার্ড দিন</label>
+              <input
+                type="password"
+                className="w-full px-4 py-2.5 border rounded-xl outline-none focus:ring-2 focus:ring-amber-500"
+                placeholder="গোপন পাসওয়ার্ড..."
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            <button
+              type="submit"
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-2.5 rounded-xl transition shadow"
+            >
+              প্রবেশ করুন
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-neutral-100 py-10 px-4 font-['Hind_Siliguri']">
+      <div className="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl border border-neutral-200 p-6 md:p-8">
+        <div className="flex justify-between items-center pb-6 border-b">
+          <div>
+            <h1 className="text-2xl font-bold text-amber-900">ওয়েবসাইট নিয়ন্ত্রণ প্যানেল (Admin Panel)</h1>
+            <p className="text-sm text-neutral-500">এখানে লিখলে ভিজিটরদের সামনে স্বয়ংক্রিয়ভাবে বদলে যাবে</p>
+          </div>
+          <button
+            onClick={() => setIsAuthenticated(false)}
+            className="text-xs bg-neutral-200 hover:bg-red-100 hover:text-red-600 px-3 py-1.5 rounded-lg transition"
+          >
+            লগআউট
+          </button>
+        </div>
+
+        {statusMessage && (
+          <div
+            className={`mt-4 p-4 rounded-xl flex items-center gap-2 font-medium ${
+              statusMessage.type === 'success'
+                ? 'bg-green-50 text-green-700 border border-green-200'
+                : 'bg-red-50 text-red-700 border border-red-200'
+            }`}
+          >
+            {statusMessage.type === 'success' ? <CheckCircle2 className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+            {statusMessage.text}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          {/* জরুরি নোটিশ */}
+          <div className="bg-amber-50/60 p-5 rounded-xl border border-amber-200">
+            <div className="flex items-center justify-between mb-2">
+              <label className="font-bold text-amber-900">জরুরি নোটিশ / ঘোষণা</label>
+              <label className="text-xs flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.showNotice}
+                  onChange={(e) => setFormData({ ...formData, showNotice: e.target.checked })}
+                  className="rounded text-amber-600"
+                />
+                নোটিশ সবার কাছে দেখাবে?
+              </label>
+            </div>
+            <textarea
+              rows={2}
+              className="w-full px-3 py-2 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-amber-500"
+              value={formData.emergencyNotice}
+              onChange={(e) => setFormData({ ...formData, emergencyNotice: e.target.value })}
+            />
+          </div>
+
+          {/* সাধারণ শিরোনাম ও ব্যানার */}
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold mb-1">সংগঠনের নাম</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border rounded-lg"
+                value={formData.orgName}
+                onChange={(e) => setFormData({ ...formData, orgName: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1">উপ-শিরোনাম / এলাকা</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border rounded-lg"
+                value={formData.tagline}
+                onChange={(e) => setFormData({ ...formData, tagline: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-1">ব্যানার বড় শিরোনাম</label>
+            <input
+              type="text"
+              className="w-full px-3 py-2 border rounded-lg"
+              value={formData.heroTitle}
+              onChange={(e) => setFormData({ ...formData, heroTitle: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-1">ব্যানার বিবরণ</label>
+            <textarea
+              rows={2}
+              className="w-full px-3 py-2 border rounded-lg"
+              value={formData.heroDescription}
+              onChange={(e) => setFormData({ ...formData, heroDescription: e.target.value })}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-1">ব্যানার ছবির লিংক (Image URL)</label>
+            <input
+              type="text"
+              className="w-full px-3 py-2 border rounded-lg"
+              value={formData.heroImage}
+              onChange={(e) => setFormData({ ...formData, heroImage: e.target.value })}
+            />
+          </div>
+
+          {/* পূজা ও ইভেন্ট */}
+          <div className="border border-neutral-200 p-5 rounded-xl">
+            <h3 className="font-bold text-neutral-800 mb-3">পূজা ও অনুষ্ঠানের তথ্য</h3>
+            <div className="grid md:grid-cols-2 gap-4 mb-3">
+              <div>
+                <label className="block text-xs font-semibold mb-1">অনুষ্ঠানের নাম</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-lg"
+                  value={formData.eventTitle}
+                  onChange={(e) => setFormData({ ...formData, eventTitle: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1">তারিখ ও সময়</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-lg"
+                  value={formData.eventDate}
+                  onChange={(e) => setFormData({ ...formData, eventDate: e.target.value })}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-1">বিস্তারিত বিবরণ</label>
+              <textarea
+                rows={2}
+                className="w-full px-3 py-2 border rounded-lg"
+                value={formData.eventDetails}
+                onChange={(e) => setFormData({ ...formData, eventDetails: e.target.value })}
+              />
+            </div>
+          </div>
+
+          {/* অনুদান সংক্রান্ত নম্বর */}
+          <div className="border border-neutral-200 p-5 rounded-xl">
+            <h3 className="font-bold text-neutral-800 mb-3">অনুদান সংগ্রহের নম্বরসমূহ</h3>
+            <div className="grid md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-semibold mb-1">বিকাশ নম্বর</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-lg"
+                  value={formData.bkashNumber}
+                  onChange={(e) => setFormData({ ...formData, bkashNumber: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1">নগদ নম্বর</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-lg"
+                  value={formData.nagadNumber}
+                  onChange={(e) => setFormData({ ...formData, nagadNumber: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold mb-1">রকেট নম্বর</label>
+                <input
+                  type="text"
+                  className="w-full px-3 py-2 border rounded-lg"
+                  value={formData.rocketNumber}
+                  onChange={(e) => setFormData({ ...formData, rocketNumber: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="mt-3">
+              <label className="block text-xs font-semibold mb-1">ব্যাংক একাউন্ট বিবরণ</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border rounded-lg"
+                value={formData.bankDetails}
+                onChange={(e) => setFormData({ ...formData, bankDetails: e.target.value })}
+              />
+            </div>
+          </div>
+
+          {/* যোগাযোগ */}
+          <div className="grid md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-semibold mb-1">যোগাযোগ ফোন নম্বর</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border rounded-lg"
+                value={formData.contactPhone}
+                onChange={(e) => setFormData({ ...formData, contactPhone: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold mb-1">ঠিকানা</label>
+              <input
+                type="text"
+                className="w-full px-3 py-2 border rounded-lg"
+                value={formData.contactAddress}
+                onChange={(e) => setFormData({ ...formData, contactAddress: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3.5 rounded-xl transition shadow-lg flex items-center justify-center gap-2"
+          >
+            <Save className="w-5 h-5" />
+            {isSaving ? 'সংরক্ষণ হচ্ছে...' : 'সব পরিবর্তন সংরক্ষণ করুন (Save Updates)'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
